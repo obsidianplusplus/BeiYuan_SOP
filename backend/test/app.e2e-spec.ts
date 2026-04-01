@@ -16,10 +16,13 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
-  it('/ (GET)', () => {
+  it('/api/v1/stations (GET)', () => {
     return request(app.getHttpServer())
-      .get('/')
+      .get('/api/v1/stations')
       .expect(200)
-      .expect('Hello World!');
+      .expect((res) => {
+        expect(res.body.code).toBe(200);
+        expect(Array.isArray(res.body.data)).toBe(true);
+      });
   });
 });
