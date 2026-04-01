@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model users {
+  id         Int      @id @default(autoincrement())
+  username   String   @unique
+  password   String
+  real_name  String
+  status     Int      @default(1) // 1启用 0禁用
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  
+  user_roles user_role_bind[]
+}
+
+model roles {
+  id         Int      @id @default(autoincrement())
+  role_code  String   @unique
+  role_name  String
+  created_at DateTime @default(now())
+
+  user_roles user_role_bind[]
+}
+
+model permissions {
+  id         Int      @id @default(autoincrement())
+  menu_code  String   @unique
+  name       String
+  created_at DateTime @default(now())
+}
+
+model user_role_bind {
+  user_id Int
+  role_id Int
+  
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role roles @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, role_id])
+}
+
+model stations {
+  id           Int      @id @default(autoincrement())
+  station_code String   @unique
+  name         String
+  status       Int      @default(1) // 1启用 0停用
+  sort         Int      @default(0)
+  created_at   DateTime @default(now())
+
+  terminals    terminal_station[]
+  sops         sop_main[]
+  cover_config cover_configs?
+}
+
+model terminals {
+  id               Int      @id @default(autoincrement())
+  terminal_uuid    String   @unique
+  ip_address       String?
+  last_active_time DateTime @default(now())
+  created_at       DateTime @default(now())
+
+  stations terminal_station[]
+}
+
+model terminal_station {
+  id          Int      @id @default(autoincrement())
+  terminal_id Int
+  station_id  Int
+  bind_time   DateTime @default(now())
+
+  terminal terminals @relation(fields: [terminal_id], references: [id], onDelete: Cascade)
+  station  stations  @relation(fields: [station_id], references: [id], onDelete: Cascade)
+}
+
+model sop_main {
+  id         Int      @id @default(autoincrement())
+  station_id Int
+  sop_code   String   @unique
+  name       String
+  created_at DateTime @default(now())
+
+  station  stations       @relation(fields: [station_id], references: [id], onDelete: Cascade)
+  versions sop_versions[]
+}
+
+model sop_versions {
+  id         Int      @id @default(autoincrement())
+  sop_id     Int
+  version_no String
+  status     Int      @default(0) // 0草稿 1生效 2已下线
+  is_active  Int      @default(0) // 0否 1是
+  created_at DateTime @default(now())
+
+  sop  sop_main   @relation(fields: [sop_id], references: [id], onDelete: Cascade)
+  file sop_files?
+}
+
+model sop_files {
+  id               Int      @id @default(autoincrement())
+  version_id       Int      @unique
+  file_path        String
+  original_name    String
+  total_pages      Int
+  is_zero_indexed  Int      @default(1) // 默认1
+  file_size        Int      // kb
+  created_at       DateTime @default(now())
+
+  version sop_versions @relation(fields: [version_id], references: [id], onDelete: Cascade)
+}
+
+model cover_configs {
+  id             Int      @id @default(autoincrement())
+  station_id     Int      @unique
+  background_img String?
+  main_title     String?
+  prompt_text    String?
+  created_at     DateTime @default(now())
+
+  station stations @relation(fields: [station_id], references: [id], onDelete: Cascade)
+}
+
+model feedbacks {
+  id            Int      @id @default(autoincrement())
+  station_name  String
+  terminal_uuid String
+  submitter     String
+  contact       String?
+  type          String
+  content       String   @db.Text
+  sop_name      String?
+  sop_version   String?
+  page_no       Int?
+  mail_status   Int      @default(0) // 0未发 1成功 2失败
+  create_time   DateTime @default(now())
+
+  attachments feedback_files[]
+}
+
+model feedback_files {
+  id          Int      @id @default(autoincrement())
+  feedback_id Int
+  file_path   String
+  create_time DateTime @default(now())
+
+  feedback feedbacks @relation(fields: [feedback_id], references: [id], onDelete: Cascade)
+}
+
+model mail_logs {
+  id             Int      @id @default(autoincrement())
+  feedback_id    Int
+  receiver_email String
+  send_time      DateTime @default(now())
+  status         Int      // 1成功 0失败
+  fail_reason    String?  @db.Text
+}
+
+model sys_logs {
+  id            Int      @id @default(autoincrement())
+  action_type   String
+  operator_name String
+  content       String   @db.Text
+  ip            String?
+  create_time   DateTime @default(now())
+}
+
+model sys_configs {
+  id           Int      @id @default(autoincrement())
+  config_key   String   @unique
+  config_value String   @db.Text
+  remark       String?
+}
